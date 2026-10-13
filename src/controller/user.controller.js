@@ -6,6 +6,12 @@ import {
   readRefreshToken,
 } from "../utils/auth.utils.js";
 
+const refreshCookieOptions = {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production"
+}
+
 function emailLookup(email) {
     const escapedEmail = email.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     return { email: { $regex: `^${escapedEmail}$`, $options: "i" } }
@@ -44,11 +50,7 @@ export async function register(req,res) {
         role:user.role
     })
 
-    res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production"
-    })
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions)
     await userModel.findByIdAndUpdate(user._id,{
         refreshToken
     })
@@ -98,11 +100,7 @@ export async function login(req,res) {
         }
     )
 
-    res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production"
-    })
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions)
 
     return res.status(200).json({
         message:"User loggedIn successfully",
@@ -147,11 +145,7 @@ export async function refresh(req,res) {
              await userModel.findByIdAndUpdate(user._id, {
                 refreshToken: newRefreshToken
              })
-             res.cookie("refreshToken", newRefreshToken, {
-               httpOnly: true,
-               sameSite: "lax",
-               secure: process.env.NODE_ENV === "production"
-               })
+             res.cookie("refreshToken", newRefreshToken, refreshCookieOptions)
              return res.status(200).json({
                 message:"Tokens Reeaded succesfully",
                 data:{
@@ -176,11 +170,7 @@ export async function logout(req, res) {
     if (refreshToken) {
         await userModel.updateOne({ refreshToken }, { $unset: { refreshToken: 1 } })
     }
-    res.clearCookie("refreshToken", {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production"
-    })
+    res.clearCookie("refreshToken", refreshCookieOptions)
     return res.status(200).json({ message: "Logged out successfully" })
 }
 
